@@ -1,0 +1,7 @@
+# Mac
+.DS_Store
+~$*
+
+# Source files (not needed on the web)
+*.xlsx
+"# Vocab Mountain — build spec.md"

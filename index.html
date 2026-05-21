@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vocab Mountain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --parchment: #f1ebe0;
+      --ink:       #1f2a24;
+      --ochre:     #b8602f;
+      --moss:      #5d7560;
+      --struggle:  #a13a2c;
+      --mastered:  #4a6b48;
+      --border:    rgba(31,42,36,.13);
+    }
+
+    html { height: 100%; }
+
+    body {
+      font-family: 'Geist', 'Inter', system-ui, sans-serif;
+      background-color: var(--parchment);
+      background-image:
+        repeating-linear-gradient(-45deg, transparent, transparent 20px,
+          rgba(139,90,43,.022) 20px, rgba(139,90,43,.022) 21px),
+        repeating-linear-gradient( 45deg, transparent, transparent 28px,
+          rgba(31,42,36,.012) 28px, rgba(31,42,36,.012) 29px);
+      color: var(--ink);
+      min-height: 100%;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(241,235,224,.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 2px solid var(--ochre);
+    }
+
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+      max-width: 900px; margin: 0 auto;
+      padding: 11px 16px;
+    }
+
+    .header-left { display: flex; flex-direction: column; gap: 2px; }
+
+    .logo {
+      font-family: 'Fraunces', Georgia, serif;
+      font-optical-sizing: auto;
+      font-size: 1.15rem; font-weight: 600;
+      letter-spacing: -.015em; color: var(--ink);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .logo-icon { color: var(--ochre); font-size: 1rem; }
+
+    .stats {
+      font-family: 'Geist Mono', monospace;
+      font-size: .7rem; color: rgba(31,42,36,.5);
+      letter-spacing: .01em;
+    }
+
+    .header-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+    /* ── Shared button ──────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 11px; min-height: 34px;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: transparent; color: var(--ink);
+      font-family: 'Geist', sans-serif; font-size: .78rem; font-weight: 500;
+      cursor: pointer; transition: background .12s, border-color .12s;
+      white-space: nowrap;
+    }
+    .btn:hover   { background: rgba(31,42,36,.06); }
+    .btn:active  { background: rgba(31,42,36,.11); }
+    .btn.active  { background: rgba(93,117,96,.15); border-color: var(--moss); color: var(--mastered); }
+    .btn-ghost   { border-color: transparent; color: rgba(31,42,36,.5); }
+    .btn-primary { background: var(--ink); color: var(--parchment); border-color: var(--ink); }
+    .btn-primary:hover { background: rgba(31,42,36,.85); }
+    .btn-danger  { border-color: var(--struggle); color: var(--struggle); }
+    .btn-danger:hover { background: rgba(161,58,44,.08); }
+
+    /* ── Word list ──────────────────────────────────────────── */
+    .word-list { max-width: 900px; margin: 0 auto; }
+
+    .word-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 13px 16px;
+      border-bottom: 1px solid rgba(31,42,36,.065);
+      border-left: 3px solid transparent;
+      cursor: pointer;
+      transition: background .12s, border-left-color .12s;
+    }
+    .word-row:hover                        { background: rgba(31,42,36,.032); }
+    .word-row.s-struggling                 { background: #fbe8e5; border-left-color: var(--struggle); }
+    .word-row.s-mastered                   { background: #e5efdf; border-left-color: var(--mastered); }
+    /* focused always wins — comes last, ochre border on every status */
+    .word-row.focused                      { background: #ede3d0; border-left-color: var(--ochre); }
+    .word-row.focused.s-struggling         { background: #f5d8d4; border-left-color: var(--ochre); }
+    .word-row.focused.s-mastered           { background: #d8ead5; border-left-color: var(--ochre); }
+
+    @keyframes slideOut {
+      0%   { opacity:1; transform:translateX(0);   max-height:140px; padding-top:13px; padding-bottom:13px; }
+      55%  { opacity:0; transform:translateX(28px); max-height:140px; }
+      100% { opacity:0; transform:translateX(28px); max-height:0; padding-top:0; padding-bottom:0; border-bottom-width:0; }
+    }
+    .word-row.sliding-out { animation: slideOut .32s ease forwards; pointer-events:none; }
+
+    .word-main { flex: 1; min-width: 0; }
+
+    .word-headline { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+
+    .word-text {
+      font-family: 'Fraunces', Georgia, serif;
+      font-optical-sizing: auto;
+      font-size: 1.06rem; font-weight: 400; color: var(--ink);
+    }
+
+    .word-pos {
+      font-family: 'Geist Mono', monospace;
+      font-size: .68rem; color: rgba(31,42,36,.42); font-style: italic;
+    }
+
+    .word-grp {
+      font-family: 'Geist Mono', monospace;
+      font-size: .62rem; color: rgba(93,117,96,.55);
+      margin-left: auto;
+      background: rgba(93,117,96,.1);
+      padding: 1px 5px; border-radius: 3px;
+    }
+
+    .word-def {
+      display: none; margin-top: 7px;
+      font-size: .865rem; line-height: 1.55; color: rgba(31,42,36,.72);
+    }
+    .word-def.open { display: block; }
+
+    .word-syn {
+      margin-top: 4px;
+      font-size: .77rem; color: rgba(74,107,72,.85);
+    }
+
+    /* ── Row action buttons ─────────────────────────────────── */
+    .row-actions {
+      display: flex; gap: 3px; align-items: center;
+      flex-shrink: 0; margin-left: 4px;
+    }
+
+    .act {
+      width: 34px; height: 34px;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: transparent; cursor: pointer;
+      font-family: 'Geist Mono', monospace;
+      font-size: .7rem; font-weight: 600;
+      color: rgba(31,42,36,.38);
+      display: flex; align-items: center; justify-content: center;
+      transition: background .1s, border-color .1s, color .1s;
+    }
+    .act:hover           { background: rgba(31,42,36,.07); color: var(--ink); }
+    .act.g               { color: rgba(74,107,72,.55); border-color: rgba(74,107,72,.25); }
+    .act.g:hover         { background: rgba(74,107,72,.18); border-color: var(--mastered); color: var(--mastered); }
+    .act.r               { color: rgba(161,58,44,.5);  border-color: rgba(161,58,44,.22); }
+    .act.r:hover         { background: rgba(161,58,44,.13); border-color: var(--struggle); color: var(--struggle); }
+    .act.d.lit           { background: rgba(184,96,47,.12); border-color: var(--ochre); color: var(--ochre); }
+    .act.w               { color: rgba(31,42,36,.35); }
+    .act.w:hover         { background: rgba(31,42,36,.07); color: var(--ink); }
+
+    /* ── Fallback banner ────────────────────────────────────── */
+    .banner {
+      max-width: 900px; margin: 12px auto 0;
+      padding: 9px 14px;
+      background: rgba(184,96,47,.1);
+      border: 1px solid rgba(184,96,47,.3); border-radius: 4px;
+      font-size: .8rem; color: var(--ochre);
+    }
+
+    /* ── Empty state ────────────────────────────────────────── */
+    .empty {
+      text-align: center; padding: 64px 24px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 1rem; color: rgba(31,42,36,.38);
+    }
+
+    /* ── Settings overlay ───────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(31,42,36,.38);
+      display: none; align-items: flex-start; justify-content: center;
+      padding: 56px 16px;
+    }
+    .overlay.open { display: flex; }
+
+    .panel {
+      background: var(--parchment);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 24px 24px 20px;
+      width: min(520px, 100%);
+      max-height: calc(100vh - 90px); overflow-y: auto;
+      box-shadow: 0 12px 48px rgba(31,42,36,.18);
+    }
+
+    .panel-title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-optical-sizing: auto;
+      font-size: 1.1rem; font-weight: 600;
+      margin-bottom: 20px; color: var(--ink);
+    }
+
+    .section { margin-bottom: 20px; }
+
+    .section-label {
+      font-size: .72rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .06em;
+      color: rgba(31,42,36,.5); margin-bottom: 8px;
+    }
+
+    .section-body { font-size: .875rem; color: rgba(31,42,36,.68); line-height: 1.5; }
+
+    .range-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+
+    .range-arrow { font-size: .8rem; color: rgba(31,42,36,.4); flex-shrink: 0; }
+
+    select.pick {
+      flex: 1; padding: 8px 10px; min-height: 40px;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: var(--parchment); color: var(--ink);
+      font-family: 'Geist', sans-serif; font-size: .865rem;
+      cursor: pointer;
+    }
+    select.pick:focus { outline: 2px solid var(--ochre); outline-offset: 1px; }
+
+    .panel-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+
+    /* ── Keyboard hint ──────────────────────────────────────── */
+    .kbhint {
+      position: fixed; bottom: 14px; right: 16px;
+      font-family: 'Geist Mono', monospace;
+      font-size: .62rem; color: rgba(31,42,36,.28);
+      line-height: 1.7; text-align: right; pointer-events: none;
+    }
+
+    @media (max-width: 580px) {
+      .kbhint { display: none; }
+      .word-grp { display: none; }
+      .act { width: 38px; height: 38px; }
+    }
+
+    /* ── Smooth theme transition ────────────────────────────── */
+    body, .header, .word-row, .panel, .btn, .act, .banner, .overlay, select.pick {
+      transition: background-color .25s, background .25s, color .2s, border-color .2s;
+    }
+
+    /* ── Night mode (midnight blue) ─────────────────────────── */
+    html[data-theme=dark] {
+      --ink:      #cdd5f0;
+      --ochre:    #e0923e;
+      --moss:     #5eb87a;
+      --struggle: #e05050;
+      --mastered: #4aaa62;
+      --border:   rgba(180,196,240,.13);
+    }
+
+    html[data-theme=dark] body {
+      background-color: #080e1e;
+      background-image:
+        repeating-linear-gradient(-45deg, transparent, transparent 20px,
+          rgba(100,130,220,.016) 20px, rgba(100,130,220,.016) 21px),
+        repeating-linear-gradient( 45deg, transparent, transparent 28px,
+          rgba(140,160,240,.010) 28px, rgba(140,160,240,.010) 29px);
+      color: var(--ink);
+    }
+
+    html[data-theme=dark] .header {
+      background: rgba(6,10,22,.97);
+    }
+
+    html[data-theme=dark] .stats          { color: rgba(180,196,240,.5); }
+    html[data-theme=dark] .btn            { color: var(--ink); }
+    html[data-theme=dark] .btn:hover      { background: rgba(180,196,240,.08); }
+    html[data-theme=dark] .btn:active     { background: rgba(180,196,240,.13); }
+    html[data-theme=dark] .btn.active     { background: rgba(94,184,122,.16); border-color: var(--moss); color: var(--mastered); }
+    html[data-theme=dark] .btn-ghost      { color: rgba(180,196,240,.45); }
+    html[data-theme=dark] .btn-primary    { background: rgba(180,196,240,.88); color: #080e1e; border-color: transparent; }
+    html[data-theme=dark] .btn-primary:hover { background: rgba(180,196,240,.75); }
+    html[data-theme=dark] .btn-danger:hover  { background: rgba(224,80,80,.12); }
+
+    html[data-theme=dark] .word-row {
+      border-bottom-color: rgba(180,196,240,.07);
+    }
+    html[data-theme=dark] .word-row:hover { background: rgba(180,196,240,.05); }
+
+    html[data-theme=dark] .word-row.s-struggling { background: #200e14; border-left-color: var(--struggle); }
+    html[data-theme=dark] .word-row.s-mastered   { background: #081e14; border-left-color: var(--mastered); }
+
+    html[data-theme=dark] .word-row.focused {
+      background: #0e1a36;
+      border-left-color: var(--ochre);
+      box-shadow: inset 0 0 24px rgba(224,146,62,.08);
+    }
+    html[data-theme=dark] .word-row.focused.s-struggling { background: #2e1018; border-left-color: var(--ochre); box-shadow: inset 0 0 20px rgba(224,80,80,.08); }
+    html[data-theme=dark] .word-row.focused.s-mastered   { background: #0c2a1c; border-left-color: var(--ochre); box-shadow: inset 0 0 20px rgba(74,170,98,.08); }
+
+    html[data-theme=dark] .word-pos       { color: rgba(180,196,240,.36); }
+    html[data-theme=dark] .word-grp       { color: rgba(94,184,122,.65); background: rgba(94,184,122,.1); }
+    html[data-theme=dark] .word-def       { color: rgba(180,196,240,.7); }
+    html[data-theme=dark] .word-syn       { color: rgba(94,184,122,.85); }
+
+    html[data-theme=dark] .act            { color: rgba(180,196,240,.3); border-color: rgba(180,196,240,.1); }
+    html[data-theme=dark] .act:hover      { background: rgba(180,196,240,.07); color: var(--ink); border-color: rgba(180,196,240,.2); }
+    html[data-theme=dark] .act.g          { color: rgba(74,170,98,.65);  border-color: rgba(74,170,98,.26); }
+    html[data-theme=dark] .act.g:hover    { background: rgba(74,170,98,.15);  border-color: var(--mastered); color: var(--mastered); }
+    html[data-theme=dark] .act.r          { color: rgba(224,80,80,.62);  border-color: rgba(224,80,80,.25); }
+    html[data-theme=dark] .act.r:hover    { background: rgba(224,80,80,.14);  border-color: var(--struggle); color: var(--struggle); }
+    html[data-theme=dark] .act.d.lit      { background: rgba(224,146,62,.14); border-color: var(--ochre); color: var(--ochre); }
+    html[data-theme=dark] .act.w          { color: rgba(180,196,240,.28); border-color: rgba(180,196,240,.08); }
+    html[data-theme=dark] .act.w:hover    { background: rgba(180,196,240,.06); color: var(--ink); }
+
+    html[data-theme=dark] .overlay        { background: rgba(0,4,16,.6); }
+    html[data-theme=dark] .panel          { background: #0c1428; box-shadow: 0 16px 60px rgba(0,0,0,.6); }
+    html[data-theme=dark] .section-label  { color: rgba(180,196,240,.45); }
+    html[data-theme=dark] .section-body   { color: rgba(180,196,240,.62); }
+    html[data-theme=dark] .range-arrow    { color: rgba(180,196,240,.35); }
+    html[data-theme=dark] select.pick     { background: #080e1e; color: var(--ink); border-color: var(--border); }
+    html[data-theme=dark] .panel-title    { color: var(--ink); }
+
+    html[data-theme=dark] .banner { background: rgba(224,146,62,.12); border-color: rgba(224,146,62,.3); }
+    html[data-theme=dark] .empty  { color: rgba(180,196,240,.3); }
+    html[data-theme=dark] .kbhint { color: rgba(180,196,240,.22); }
+  </style>
+</head>
+<body>
+
+<!-- ── Fallback banner ──────────────────────────────────────── -->
+<div class="banner" id="banner" style="display:none">
+  vocab-words.js failed to load — using sample word list.
+</div>
+
+<!-- ── Header ───────────────────────────────────────────────── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">▲</span> Vocab Mountain
+      </div>
+      <div class="stats" id="stats">loading…</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="btnMastered"  onclick="toggleMastered()">Show mastered</button>
+      <button class="btn" id="btnRandom"    onclick="toggleRandom()">🎲 Randomize</button>
+      <button class="btn btn-ghost" id="btnTheme" onclick="toggleTheme()" title="Toggle night mode">☾</button>
+      <button class="btn btn-ghost"          onclick="openSettings()">⚙ Settings</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Word list ─────────────────────────────────────────────── -->
+<main>
+  <div class="word-list" id="wordList"></div>
+</main>
+
+<!-- ── Settings overlay ──────────────────────────────────────── -->
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="panel">
+    <div class="panel-title">Settings</div>
+
+    <div class="section">
+      <div class="section-label">Group Range</div>
+      <div class="section-body">Show only words from a specific group range.</div>
+      <div class="range-row">
+        <select class="pick" id="selStart" onchange="applyRange()">
+          <option value="">All groups</option>
+        </select>
+        <span class="range-arrow">→</span>
+        <select class="pick" id="selEnd" onchange="applyRange()">
+          <option value="">All groups</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Status</div>
+      <div class="section-body" id="panelInfo">—</div>
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn btn-danger" onclick="resetProgress()">Reset progress</button>
+      <button class="btn" onclick="reloadTip()">Reload words</button>
+      <button class="btn btn-primary" style="margin-left:auto" onclick="closeSettings()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Keyboard hint ─────────────────────────────────────────── -->
+<div class="kbhint">
+  ↑ ↓ / J K — move focus<br>
+  G — mastered &nbsp; R — struggling<br>
+  D — definition &nbsp; W — reset
+</div>
+
+<script src="vocab-words.js"></script>
+<script>
+// ── Fallback words ─────────────────────────────────────────────
+const FALLBACK = [
+  { word:"abound",    pos:"v.",   group:1, definition:"to exist in large numbers or amounts",            synonyms:["teem","proliferate"],   antonyms:["lack"] },
+  { word:"austere",   pos:"adj.", group:1, definition:"severe or strict in manner; plain and unadorned", synonyms:["stern","spartan"],       antonyms:["lavish"] },
+  { word:"ephemeral", pos:"adj.", group:4, definition:"lasting for a very short time; transitory",       synonyms:["fleeting","transient"],  antonyms:["permanent"] },
+  { word:"sagacious", pos:"adj.", group:8, definition:"having or showing keen mental discernment; wise", synonyms:["wise","astute"],         antonyms:["foolish"] },
+  { word:"tenacious", pos:"adj.", group:9, definition:"holding firmly to something; persistent",         synonyms:["persistent","dogged"],   antonyms:["weak"] },
+];
+
+// ── State ──────────────────────────────────────────────────────
+let ALL   = [];          // full word list
+let disp  = [];          // current display list (filtered + ordered)
+let prog  = {};          // { slug: { status, seen, correct } }
+let cfg   = {};          // { showMastered, randomize, startGroup, endGroup }
+let open  = new Set();   // expanded definition slugs
+let focus = null;        // slug of focused row
+let fallback = false;
+
+// ── Bootstrap ──────────────────────────────────────────────────
+function init() {
+  if (window.WORD_LIST && window.WORD_LIST.length) {
+    ALL = window.WORD_LIST;
+  } else {
+    ALL = FALLBACK; fallback = true;
+    document.getElementById('banner').style.display = 'block';
+  }
+  loadProg(); loadCfg();
+  loadTheme();
+  populateSelects();
+  render();
+  bindKeys();
+}
+
+// ── Slug ───────────────────────────────────────────────────────
+function slug(w) {
+  return w.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+}
+
+// ── Persistence ────────────────────────────────────────────────
+function loadProg() {
+  try { prog = JSON.parse(localStorage.getItem('vm.progress')||'{}'); } catch(e){ prog={}; }
+}
+function saveProg() {
+  try { localStorage.setItem('vm.progress', JSON.stringify(prog)); } catch(e){}
+}
+function loadCfg() {
+  try {
+    const s = JSON.parse(localStorage.getItem('vm.settings')||'{}');
+    cfg = { showMastered: s.showMastered||false, randomize: s.randomize||false,
+            startGroup: s.startGroup||'', endGroup: s.endGroup||'' };
+  } catch(e){ cfg={showMastered:false,randomize:false,startGroup:'',endGroup:''}; }
+}
+function saveCfg() {
+  try { localStorage.setItem('vm.settings', JSON.stringify(cfg)); } catch(e){}
+}
+
+// ── Word helpers ───────────────────────────────────────────────
+function status(w) { return (prog[slug(w.word)]||{}).status || 'new'; }
+function setStatus(w, s) {
+  const id = slug(w.word);
+  if (!prog[id]) prog[id] = { status:'new', seen:0, correct:0 };
+  prog[id].status = s;
+  saveProg();
+}
+
+// ── Build display list ─────────────────────────────────────────
+function buildDisp() {
+  let words = [...ALL];
+
+  // Group range filter
+  if (cfg.startGroup || cfg.endGroup) {
+    const sg = cfg.startGroup ? parseInt(cfg.startGroup) : 1;
+    const eg = cfg.endGroup   ? parseInt(cfg.endGroup)   : Infinity;
+    words = words.filter(w => (w.group||0) >= sg && (w.group||0) <= eg);
+  }
+
+  // Randomize
+  if (cfg.randomize) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('vm.mountainOrder')||'null');
+      if (Array.isArray(saved)) {
+        const map = new Map(words.map(w=>[w.word,w]));
+        const ordered = saved.filter(n=>map.has(n)).map(n=>map.get(n));
+        const extra   = words.filter(w=>!saved.includes(w.word));
+        words = [...ordered, ...extra];
+      }
+    } catch(e){}
+  }
+  return words;
+}
+
+function shuffleSave() {
+  const arr = [...ALL]; for (let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  try { localStorage.setItem('vm.mountainOrder', JSON.stringify(arr.map(w=>w.word))); } catch(e){}
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function render() {
+  disp = buildDisp();
+  const list = document.getElementById('wordList');
+
+  const total     = disp.length;
+  const nMastered = disp.filter(w=>status(w)==='mastered').length;
+  const nVisible  = cfg.showMastered ? total : disp.filter(w=>status(w)!=='mastered').length;
+
+  document.getElementById('stats').textContent =
+    `${nVisible} word${nVisible!==1?'s':''} to climb · ${nMastered} mastered`;
+
+  document.getElementById('btnMastered').classList.toggle('active', cfg.showMastered);
+  document.getElementById('btnRandom').classList.toggle('active', cfg.randomize);
+
+  list.innerHTML = '';
+  let renderedAny = false;
+
+  for (let i = 0; i < disp.length; i++) {
+    const w = disp[i];
+    const s = status(w);
+    if (s === 'mastered' && !cfg.showMastered) continue;
+
+    renderedAny = true;
+    const id  = slug(w.word);
+    const exp = open.has(id);
+    const hasSyn = w.synonyms && w.synonyms.length > 0;
+    const hasAnt = w.antonyms && w.antonyms.length > 0;
+
+    const row = document.createElement('div');
+    row.className = 'word-row' +
+      (s==='struggling' ? ' s-struggling' : s==='mastered' ? ' s-mastered' : '');
+    row.dataset.wid = id;
+    row.dataset.wi  = i;
+
+    row.innerHTML =
+      `<div class="word-main">` +
+        `<div class="word-headline">` +
+          `<span class="word-text">${esc(w.word)}</span>` +
+          (w.pos ? `<span class="word-pos">${esc(w.pos)}</span>` : '') +
+          (w.group ? `<span class="word-grp">G${w.group}</span>` : '') +
+        `</div>` +
+        `<div class="word-def${exp?' open':''}">` +
+          esc(w.definition) +
+          (hasSyn ? `<div class="word-syn">syn: ${esc(w.synonyms.join(', '))}</div>` : '') +
+          (hasAnt && hasAnt!==0 && w.antonyms.length ? `<div class="word-syn" style="color:rgba(184,96,47,.75)">ant: ${esc(w.antonyms.join(', '))}</div>` : '') +
+        `</div>` +
+      `</div>` +
+      `<div class="row-actions">` +
+        `<button class="act g" title="Mastered (G)" data-a="g" data-wid="${id}">G</button>` +
+        `<button class="act r" title="Struggling (R)" data-a="r" data-wid="${id}">R</button>` +
+        `<button class="act d${exp?' lit':''}" title="Definition (D)" data-a="d" data-wid="${id}">D</button>` +
+        `<button class="act w" title="Reset (W)" data-a="w" data-wid="${id}">W</button>` +
+      `</div>`;
+
+    // Click on row body = focus; click on buttons = action (no scroll either way)
+    row.addEventListener('click', e => {
+      const btn = e.target.closest('.act');
+      if (btn) { e.stopPropagation(); focus = id; act(btn.dataset.a, btn.dataset.wid); }
+      else      { focusSlug(id); }
+    });
+
+    list.appendChild(row);
+  }
+
+  if (!renderedAny) {
+    list.innerHTML = `<div class="empty">All words mastered — well climbed.</div>`;
+  }
+
+  restoreFocus(false);   // never auto-scroll on render — only keyboard nav scrolls
+  refreshPanelInfo();
+}
+
+// ── Escape helpers ─────────────────────────────────────────────
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Scroll focused row to vertical center ──────────────────────
+function scrollCenter(row) {
+  if (!row) return;
+  const headerH = document.querySelector('.header').offsetHeight;
+  const viewH   = window.innerHeight - headerH;
+  const rowTop  = row.getBoundingClientRect().top + window.scrollY;
+  const target  = rowTop - headerH - viewH / 2 + row.offsetHeight / 2;
+  window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+}
+
+// ── Focus ──────────────────────────────────────────────────────
+function focusSlug(id) {
+  focus = id;
+  restoreFocus(false);  // clicked — no scroll jump
+}
+
+// mode: 'center' | 'nearest' | false
+function restoreFocus(mode) {
+  document.querySelectorAll('.word-row').forEach(r=>r.classList.remove('focused'));
+  if (!focus) {
+    const first = document.querySelector('.word-row');
+    if (first) { focus = first.dataset.wid; first.classList.add('focused'); }
+    return;
+  }
+  let row = document.querySelector(`.word-row[data-wid="${focus}"]`);
+  if (!row) {
+    const first = document.querySelector('.word-row');
+    if (first) { focus = first.dataset.wid; row = first; }
+  }
+  if (row) {
+    row.classList.add('focused');
+    if      (mode === 'center')  scrollCenter(row);
+    else if (mode === 'nearest') row.scrollIntoView({ block:'nearest', behavior:'smooth' });
+  }
+}
+
+function moveFocus(dir) {
+  const rows = [...document.querySelectorAll('.word-row')];
+  if (!rows.length) return;
+  const cur  = rows.findIndex(r=>r.dataset.wid===focus);
+  const next = Math.max(0, Math.min(rows.length-1, (cur<0?0:cur)+dir));
+  focus = rows[next].dataset.wid;
+  restoreFocus('center');  // center on keyboard navigation
+}
+
+// ── Actions ────────────────────────────────────────────────────
+function act(action, wid) {
+  const w = ALL.find(x=>slug(x.word)===wid);
+  if (!w) return;
+
+  if (action === 'g') {
+    setStatus(w, 'mastered');
+    if (!cfg.showMastered) {
+      const row = document.querySelector(`.word-row[data-wid="${wid}"]`);
+      if (row) {
+        // Move focus to next before animation finishes
+        const rows = [...document.querySelectorAll('.word-row')];
+        const pos  = rows.findIndex(r=>r.dataset.wid===wid);
+        if (pos < rows.length-1) focus = rows[pos+1].dataset.wid;
+        else if (pos > 0)        focus = rows[pos-1].dataset.wid;
+        row.classList.add('sliding-out');
+        row.addEventListener('animationend', render, {once:true});
+      } else render();
+    } else render();
+
+  } else if (action === 'r') {
+    setStatus(w, 'struggling'); render();
+
+  } else if (action === 'd') {
+    if (open.has(wid)) open.delete(wid); else open.add(wid);
+    // Patch DOM in-place — no full re-render needed
+    const row = document.querySelector(`.word-row[data-wid="${wid}"]`);
+    if (row) {
+      row.querySelector('.word-def').classList.toggle('open', open.has(wid));
+      row.querySelector('.act.d').classList.toggle('lit',  open.has(wid));
+    }
+
+  } else if (action === 'w') {
+    setStatus(w, 'new'); render();
+  }
+}
+
+// ── Keyboard ───────────────────────────────────────────────────
+function bindKeys() {
+  document.addEventListener('keydown', e => {
+    if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+    if (document.getElementById('overlay').classList.contains('open')) {
+      if (e.key === 'Escape') closeSettings();
+      return;
+    }
+    const k = e.key.toLowerCase();
+    if      (e.key==='ArrowUp'  ||k==='k') { e.preventDefault(); moveFocus(-1); }
+    else if (e.key==='ArrowDown'||k==='j') { e.preventDefault(); moveFocus(1); }
+    else if (k==='g'||k==='r'||k==='d'||k==='w') {
+      const row = document.querySelector('.word-row.focused');
+      if (row) act(k, row.dataset.wid);
+    }
+  });
+}
+
+// ── Theme ──────────────────────────────────────────────────────
+function loadTheme() {
+  const saved = localStorage.getItem('vm.theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const dark = saved ? saved === 'dark' : prefersDark;
+  applyTheme(dark);
+}
+
+function applyTheme(dark) {
+  document.documentElement.dataset.theme = dark ? 'dark' : '';
+  document.getElementById('btnTheme').textContent = dark ? '☀' : '☾';
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  applyTheme(!isDark);
+  try { localStorage.setItem('vm.theme', isDark ? 'light' : 'dark'); } catch(e){}
+}
+
+// ── Header controls ────────────────────────────────────────────
+function toggleMastered() { cfg.showMastered=!cfg.showMastered; saveCfg(); render(); }
+function toggleRandom()   {
+  cfg.randomize=!cfg.randomize;
+  if (cfg.randomize) shuffleSave();
+  saveCfg(); render();
+}
+
+// ── Settings panel ─────────────────────────────────────────────
+function populateSelects() {
+  const s = document.getElementById('selStart');
+  const e = document.getElementById('selEnd');
+  s.innerHTML = '<option value="">All groups</option>';
+  e.innerHTML = '<option value="">All groups</option>';
+
+  const groups = [...new Set(ALL.map(w=>w.group).filter(Boolean))].sort((a,b)=>a-b);
+  groups.forEach(g => {
+    const count = ALL.filter(w=>w.group===g).length;
+    [s,e].forEach(sel => {
+      const o = document.createElement('option');
+      o.value = g; o.textContent = `Group ${g}  (${count} words)`;
+      sel.appendChild(o);
+    });
+  });
+
+  s.value = cfg.startGroup||'';
+  e.value = cfg.endGroup||'';
+}
+
+function applyRange() {
+  cfg.startGroup = document.getElementById('selStart').value;
+  cfg.endGroup   = document.getElementById('selEnd').value;
+  saveCfg();
+}
+
+function refreshPanelInfo() {
+  const nTotal     = ALL.length;
+  const nMastered  = ALL.filter(w=>status(w)==='mastered').length;
+  const nStruggling= ALL.filter(w=>status(w)==='struggling').length;
+  const nNew       = nTotal - nMastered - nStruggling;
+  document.getElementById('panelInfo').textContent =
+    `${nTotal} words loaded${fallback?' (fallback)':''}. ` +
+    `${nNew} new · ${nStruggling} struggling · ${nMastered} mastered.`;
+}
+
+function openSettings() {
+  document.getElementById('selStart').value = cfg.startGroup||'';
+  document.getElementById('selEnd').value   = cfg.endGroup||'';
+  refreshPanelInfo();
+  document.getElementById('overlay').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('overlay').classList.remove('open');
+  render();
+}
+function overlayClick(e) { if (e.target===document.getElementById('overlay')) closeSettings(); }
+
+function resetProgress() {
+  if (!confirm('Reset all progress? This cannot be undone.')) return;
+  prog = {}; saveProg(); open.clear(); render(); closeSettings();
+}
+function reloadTip() {
+  alert('Edit vocab-words.js and refresh the page to reload words.\nExisting progress is preserved for words whose names haven\'t changed.');
+  closeSettings();
+}
+
+// ── Go ─────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
