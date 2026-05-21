@@ -92,7 +92,7 @@
     .word-list { max-width: 900px; margin: 0 auto; }
 
     .word-row {
-      display: flex; align-items: flex-start; gap: 10px;
+      display: flex; align-items: center; gap: 10px;
       padding: 13px 16px;
       border-bottom: 1px solid rgba(31,42,36,.065);
       border-left: 3px solid transparent;
@@ -155,11 +155,11 @@
     }
 
     .act {
-      width: 34px; height: 34px;
-      border: 1px solid var(--border); border-radius: 4px;
+      width: 42px; height: 42px;
+      border: 1px solid var(--border); border-radius: 6px;
       background: transparent; cursor: pointer;
       font-family: 'Geist Mono', monospace;
-      font-size: .7rem; font-weight: 600;
+      font-size: .85rem; font-weight: 600;
       color: rgba(31,42,36,.38);
       display: flex; align-items: center; justify-content: center;
       transition: background .1s, border-color .1s, color .1s;
@@ -274,7 +274,7 @@
       .btn  { padding: 5px 8px; min-height: 34px; font-size: .75rem; gap: 0; }
 
       /* larger touch targets on rows */
-      .act      { width: 40px; height: 40px; }
+      .act      { width: 46px; height: 46px; font-size: .9rem; }
       .word-row { padding: 13px 10px; }
     }
 
@@ -583,8 +583,8 @@ function render() {
         `</div>` +
       `</div>` +
       `<div class="row-actions">` +
-        `<button class="act g" title="Mastered — tap again to reset (G)" data-a="g" data-wid="${id}">G</button>` +
-        `<button class="act r" title="Struggling — tap again to reset (R)" data-a="r" data-wid="${id}">R</button>` +
+        `<button class="act g" title="Mastered — tap again to reset (G)" data-a="g" data-wid="${id}">✓</button>` +
+        `<button class="act r" title="Struggling — tap again to reset (R)" data-a="r" data-wid="${id}">✗</button>` +
       `</div>`;
 
     // Click row body → focus + toggle definition; click buttons → action
